@@ -23,10 +23,10 @@ windFarmModel = Bastankhah_PorteAgel_2014(site, wt, k=0.0324555)
 
 site.plot_wd_distribution(n_wd=12)
 
-posit_x_max = 429492 + 300
-posit_y_max = 6151447 + 300
-posit_x_min = 423974 - 300
-posit_y_min = 6147556 - 300
+posit_x_max = 429492 + 25
+posit_y_max = 6151447 + 25
+posit_x_min = 423974 - 25
+posit_y_min = 6147556 - 25
 
 # Original AEP
 aep_ref = windFarmModel(wt_x,wt_y).aep().sum()
@@ -37,17 +37,17 @@ print ('Original AEP: %f GWh'%aep_ref)
 WT_Num = 80
 farm_widht = posit_x_max - posit_x_min
 Farm_height = posit_y_max - posit_y_min
-# WT_Rad = 40
+WT_Rad = 40
 # Gen_Num = 10
 
 def Data_Imputs ():
-    global WT_Rad
+    global Iter_Lenght
     global Iter_Num
     global Gen_Num
-    WT_Rad = int(input ("Enter Wind Turbine Radius in meters: "))
+    Iter_Lenght = int(input ("Enter Iteration Lenght in meters: "))
     Iter_Num = int(input ("Enter Number of Iterations on each Generation: ")) 
     Gen_Num = int(input ("Enter Number of Genetic Generations: "))
-    return WT_Rad
+    return Iter_Lenght
     return Iter_Num
     return Gen_Num
 
@@ -72,10 +72,16 @@ def all_elements_greater_than(lst, value):
 def all_elements_smaller_than(lst, value):
     return all(x < value for x in lst)
 
-def list_randon_values(lst):
+def list_randon_values(lst, val_max, val_min):
     lst_rnd = []
     for x in lst:
-        lst_rnd.append(x * rnd.uniform(0.99999,1.00001))
+        lst_rnd_val = 0
+        good_lst_rnd_val = False 
+        while good_lst_rnd_val == False:
+            lst_rnd_val = (x + (Iter_Lenght * rnd.uniform(-1,1)))
+            if (lst_rnd_val < val_max) and (lst_rnd_val > val_min):
+                good_lst_rnd_val = True
+        lst_rnd.append(lst_rnd_val)
     return lst_rnd
     
 Data_Imputs ()
@@ -84,24 +90,12 @@ solutions = []
 for s in range(Iter_Num):
     x_rnd = []
     y_rnd = []
-    good_x_sol = False
-    while good_x_sol == False:
-        x_sol = wt_x
-        x_rnd = []
-        for i in range(0,(WT_Num)):
-            x_rnd.append(rnd.uniform(-20,+20))
-        x_sol += np.array(x_rnd)
-        if (all_elements_smaller_than(x_sol, posit_x_max)) and (all_elements_greater_than(x_sol, posit_x_min)):
-            good_x_sol = True
-    good_y_sol = False
-    while good_y_sol == False:
-        y_sol = wt_y
-        y_rnd = []
-        for i in range(0,(WT_Num)):
-            y_rnd.append(rnd.uniform(-20,+20))
-        y_sol += np.array(y_rnd)   
-        if (all_elements_smaller_than(y_sol, posit_y_max)) and (all_elements_greater_than(y_sol, posit_y_min)):
-            good_y_sol = True
+    x_sol = wt_x
+    x_rnd = list_randon_values(x_sol, posit_x_max, posit_x_min)
+    x_sol = np.array(x_rnd)
+    y_sol = wt_y
+    y_rnd = list_randon_values(y_sol, posit_y_max, posit_y_min)
+    y_sol = np.array(y_rnd)   
     solutions.append( (x_sol,y_sol) )
 
 rankedsolutions = []
@@ -120,28 +114,21 @@ global Gen
 Gen = []
 NewGen_i_best = []
 aep_best_sol_i = []
+Delta_aep_best_sol_i = []
 for i in range(1,Gen_Num+1):
     Gen.append(i)
     NewGen = []
     for _ in range(Iter_Num):
         new_gen_x = []
         new_gen_y = []
-        good_new_gen_x = False
-        good_new_gen_y = False
-        while good_new_gen_x == False:
-            for s in bestsolution:
-                new_gen_x = bestsolution[0]
-                new_gen_x_rnd = []
-                new_gen_x_rnd = list_randon_values(new_gen_x)
-                if (all_elements_smaller_than(new_gen_x_rnd, posit_x_max)) and (all_elements_greater_than(new_gen_x_rnd, posit_x_min)):
-                    good_new_gen_x = True
-        while good_new_gen_y == False:
-            for s in bestsolution:
-                new_gen_y = bestsolution[1]
-                new_gen_y_rnd = []
-                new_gen_y_rnd = list_randon_values(new_gen_y)
-                if (all_elements_smaller_than(new_gen_y_rnd, posit_y_max)) and (all_elements_greater_than(new_gen_y_rnd, posit_y_min)):
-                    good_new_gen_y = True
+        for s in bestsolution:
+            new_gen_x = bestsolution[0]
+            new_gen_x_rnd = []
+            new_gen_x_rnd = list_randon_values(new_gen_x, posit_x_max , posit_x_min)
+        for s in bestsolution:
+            new_gen_y = bestsolution[1]
+            new_gen_y_rnd = []
+            new_gen_y_rnd = list_randon_values(new_gen_y, posit_y_max, posit_y_min)
         x_sol = new_gen_x_rnd
         y_sol = new_gen_y_rnd
         NewGen.append( (x_sol,y_sol) )
@@ -161,6 +148,13 @@ for i in range(1,Gen_Num+1):
     aep_best_sol_i.append(aep_best_sol)
     print(f"aep_best_sol on Genetic Generation {i}:",aep_best_sol)
 
+aep_best_sol_prev = aep_ref
+for s in aep_best_sol_i:
+    Delta_aep_best_sol_i_elem = s - aep_best_sol_prev
+    aep_best_sol_prev = s
+    Delta_aep_best_sol_i.append(Delta_aep_best_sol_i_elem)
+    
+Delta_aep_best_sol_i
 finalsolution = []
 finalsolution = bestsolution
 print("finalsolution")
@@ -196,5 +190,10 @@ plt.xlabel('Genetic Generation i')
 plt.ylabel('Best aep Generation i GWh')
 plt.show()
 
-
+plt.figure()
+plt.title('Evolution of diferencial improvement throught genetic evolutions')
+plt.plot(Gen, Delta_aep_best_sol_i, 'r.')
+plt.xlabel('Genetic Generation i')
+plt.ylabel('Best Delta aep Generation i GWh')
+plt.show()
     
